@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Course</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <!-- Firebase init -->
+    <script src="js/firebase.js"></script>
+
+    <!-- addSkill function -->
+    <script src="js/skills.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h2>Add Course</h2>
+    <p class="subtitle">Publish a course and barter it with your skills.</p>
+
+    <label for="courseName">Course Name</label>
+    <input type="text" id="courseName" placeholder="e.g. Full Stack Web Development">
+
+    <label for="barterSkill">Skill to be Bartered With</label>
+    <input type="text" id="barterSkill" placeholder="e.g. Graphic Design">
+
+    <label for="personName">Your Name</label>
+    <input type="text" id="personName" placeholder="Your Name">
+
+    <label for="phone">WhatsApp Number</label>
+    <input type="text" id="phone" placeholder="e.g. 9876543210">
+
+    <button onclick="addSkill()">Add Course</button>
+
+    <a href="dashboard.html">⬅ Back to Dashboard</a>
+</div>
+
+<script>
+// Auth guard
+auth.onAuthStateChanged(user => {
+    if (!user) {
+        alert("Please login again.");
+        window.location.href = "index.html";
+    }
+});
+</script>
+
+</body>
+</html>
