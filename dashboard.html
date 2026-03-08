@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SkillBarter | Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Firebase SDKs (Compat) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script src="js/firebase.js"></script>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:"Poppins",sans-serif;
+}
+
+body{
+    background:#f7f8fc;
+    min-height:100vh;
+}
+
+/* HEADER */
+header{
+    background:white;
+    padding:15px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.08);
+    display:flex;
+    justify-content:center;
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+
+.search-bar{
+    width:60%;
+    max-width:500px;
+}
+
+.search-bar input{
+    width:100%;
+    padding:10px 15px;
+    border-radius:25px;
+    border:1px solid #ccc;
+}
+
+/* NAV BAR BELOW SEARCH */
+.navbar{
+    background:white;
+    display:flex;
+    justify-content:center;
+    gap:16px;
+    padding:10px 0;
+    box-shadow:0 2px 6px rgba(0,0,0,0.05);
+}
+
+.nav-link{
+    padding:6px 14px;
+    border-radius:999px;
+    cursor:pointer;
+    font-size:14px;
+    color:#4b5563;
+    border:1px solid transparent;
+}
+
+.nav-link.active{
+    background:#4b3cff;
+    color:white;
+    border-color:#4b3cff;
+}
+
+/* CONTENT */
+.content{
+    padding:20px 16px;
+    max-width:900px;
+    margin:0 auto;
+    color:#555;
+}
+
+/* Logout button */
+.logout-btn{
+    position:fixed;
+    top:15px;
+    right:20px;
+    background:#4b3cff;
+    color:white;
+    border:none;
+    padding:6px 12px;
+    border-radius:15px;
+    cursor:pointer;
+}
+
+/* Section header row */
+.section-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:14px;
+}
+
+.section-header h2{
+    font-size:20px;
+    color:#111827;
+}
+
+.add-btn{
+    border:none;
+    background:#0077b6;
+    color:white;
+    border-radius:50%;
+    width:34px;
+    height:34px;
+    font-size:20px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+/* Simple card list */
+.item-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+/* Cards */
+.doc-card,
+.video-card,
+.tutor-card{
+    background:white;
+    border-radius:12px;
+    padding:12px 14px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+}
+
+/* Left text */
+.card-main{
+    flex:1;
+}
+
+/* Buttons on right */
+.card-actions{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+}
+
+.btn-small{
+    padding:6px 10px;
+    border:none;
+    border-radius:999px;
+    font-size:12px;
+    cursor:pointer;
+    color:white;
+}
+
+.btn-edit{
+    background:#4b3cff;
+}
+
+.btn-delete{
+    background:#e63946;
+}
+
+/* Video style like YouTube (simple) */
+.video-thumb{
+    width:140px;
+    height:80px;
+    background:#e5e7eb;
+    border-radius:8px;
+    object-fit:cover;
+}
+
+/* Simple form (modal-like) */
+.form-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.3);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+}
+
+.form-card{
+    background:white;
+    padding:18px 16px;
+    border-radius:14px;
+    width:340px;
+    max-width:90%;
+    box-shadow:0 10px 30px rgba(0,0,0,0.25);
+}
+
+.form-card h3{
+    margin-bottom:10px;
+    font-size:18px;
+}
+
+.form-card label{
+    display:block;
+    font-size:13px;
+    margin-top:8px;
+    margin-bottom:4px;
+}
+
+.form-card input{
+    width:100%;
+    padding:8px 10px;
+    border-radius:8px;
+    border:1px solid #d1d5db;
+    margin-bottom:4px;
+}
+
+.form-actions{
+    margin-top:12px;
+    display:flex;
+    gap:8px;
+    justify-content:flex-end;
+}
+
+.form-actions button{
+    width:auto;
+    padding:8px 12px;
+    border-radius:10px;
+}
+</style>
+</head>
+<body>
+
+<button class="logout-btn" onclick="logout()">Logout</button>
+
+<header>
+    <div class="search-bar">
+        <input type="text" placeholder="Search (not wired yet)..." disabled>
+    </div>
+</header>
+
+<!-- Nav bar: Tutors first -->
+<div class="navbar">
+    <div class="nav-link active" id="navTutors" onclick="showSection('tutors')">Tutors</div>
+    <div class="nav-link" id="navDocuments" onclick="showSection('documents')">Documents</div>
+    <div class="nav-link" id="navVideos" onclick="showSection('videos')">Videos</div>
+</div>
+
+<div class="content">
+    <div id="sectionContainer"></div>
+</div>
+
+<!-- Form overlay (reused) -->
+<div class="form-overlay" id="formOverlay">
+  <div class="form-card" id="formCard">
+    <!-- filled dynamically -->
+  </div>
+</div>
+
+<script>
+// Auth guard
+auth.onAuthStateChanged(user => {
+    if (!user) {
+        window.location.href = "index.html";
+    } else {
+        // Default section: tutors
+        showSection('tutors');
+    }
+});
+
+function logout(){
+    auth.signOut().then(() => {
+        window.location.href = "index.html";
+    });
+}
+
+/* ========= WhatsApp helpers ========= */
+
+function formatPhoneForWhatsApp(localPhone) {
+    if (!localPhone) return "";
+    let cleaned = localPhone.replace(/\D/g, "");
+    if (cleaned.startsWith("0")) {
+        cleaned = cleaned.substring(1);
+    }
+    const countryCode = "91"; // India
+    return countryCode + cleaned;
+}
+
+function buildTutorWhatsAppLink(phone, tutorName) {
+    const fullPhone = formatPhoneForWhatsApp(phone);
+    if (!fullPhone) return "";
+    const msg = `Hi ${tutorName || ''}, I found you on SkillBarter and would like to barter my skills for your tutoring.`;
+    const encoded = encodeURIComponent(msg);
+    return `https://wa.me/${fullPhone}?text=${encoded}`;
+}
+
+function messageTutor(phone, tutorName) {
+    const url = buildTutorWhatsAppLink(phone, tutorName);
+    if (!url) {
+        alert("No valid WhatsApp number found for this tutor.");
+        return;
+    }
+    window.open(url, "_blank");
+}
+
+/* ========= NAV SECTION SWITCH ========= */
+
+let currentSection = 'tutors';
+let unsubscribeDocuments = null;
+let unsubscribeVideos = null;
+let unsubscribeTutors = null;
+
+function setActiveNav(section){
+    document.getElementById('navDocuments').classList.remove('active');
+    document.getElementById('navVideos').classList.remove('active');
+    document.getElementById('navTutors').classList.remove('active');
+
+    if (section === 'documents') {
+        document.getElementById('navDocuments').classList.add('active');
+    } else if (section === 'videos') {
+        document.getElementById('navVideos').classList.add('active');
+    } else if (section === 'tutors') {
+        document.getElementById('navTutors').classList.add('active');
+    }
+}
+
+function showSection(section){
+    currentSection = section;
+    setActiveNav(section);
+
+    const container = document.getElementById('sectionContainer');
+
+    if (unsubscribeDocuments) { unsubscribeDocuments(); unsubscribeDocuments = null; }
+    if (unsubscribeVideos) { unsubscribeVideos(); unsubscribeVideos = null; }
+    if (unsubscribeTutors) { unsubscribeTutors(); unsubscribeTutors = null; }
+
+    if (section === 'documents') {
+        container.innerHTML = `
+          <div class="section-header">
+            <h2>Documents</h2>
+            <button class="add-btn" onclick="openDocumentForm()">+</button>
+          </div>
+          <div id="documentsList" class="item-list"></div>
+        `;
+        listenDocuments();
+    } else if (section === 'videos') {
+        container.innerHTML = `
+          <div class="section-header">
+            <h2>Videos</h2>
+            <button class="add-btn" onclick="openVideoForm()">+</button>
+          </div>
+          <div id="videosList" class="item-list"></div>
+        `;
+        listenVideos();
+    } else if (section === 'tutors') {
+        container.innerHTML = `
+          <div class="section-header">
+            <h2>Tutors</h2>
+            <button class="add-btn" onclick="openTutorForm()">+</button>
+          </div>
+          <div id="tutorsList" class="item-list"></div>
+        `;
+        listenTutors();
+    }
+}
+
+/* ========= FORM OVERLAY HELPERS ========= */
+
+function closeForm() {
+    document.getElementById('formOverlay').style.display = 'none';
+    document.getElementById('formCard').innerHTML = '';
+}
+
+/* ========= DOCUMENTS CRUD ========= */
+
+function listenDocuments(){
+    unsubscribeDocuments = db.collection('documents')
+      .orderBy('createdAt', 'desc')
+      .onSnapshot(snapshot => {
+        const user = auth.currentUser;
+        const uid = user ? user.uid : null;
+        let html = '';
+
+        snapshot.forEach(doc => {
+          const d = doc.data();
+          const isOwner = uid && uid === d.userId;
+
+          html += `
+            <div class="doc-card">
+              <div class="card-main">
+                <div><strong>${d.name || 'Untitled document'}</strong></div>
+                <div style="font-size:12px; color:#6b7280;">${d.url ? d.url : ''}</div>
+              </div>
+              <div class="card-actions">
+                ${d.url ? `<button class="btn-small" style="background:#10b981;" onclick="window.open('${d.url}','_blank')">Open</button>` : ''}
+                ${isOwner ? `
+                  <button class="btn-small btn-edit" onclick="openDocumentForm('${doc.id}', '${(d.name || '').replace(/'/g, "\\'")}', '${(d.url || '').replace(/'/g, "\\'")}')">Update</button>
+                  <button class="btn-small btn-delete" onclick="deleteDocument('${doc.id}', '${d.userId}')">Delete</button>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        });
+
+        if (!html) {
+          html = `<p style="font-size:13px; color:#6b7280;">No documents yet. Click + to upload one.</p>`;
+        }
+
+        document.getElementById('documentsList').innerHTML = html;
+      });
+}
+
+function openDocumentForm(docId = null, name = '', url = '') {
+  const card = document.getElementById('formCard');
+  card.innerHTML = `
+    <h3>${docId ? 'Update Document' : 'Add Document'}</h3>
+    <label>Document Name</label>
+    <input type="text" id="docNameInput" value="${name}">
+    <label>Document URL (e.g. Google Drive link)</label>
+    <input type="text" id="docUrlInput" value="${url}">
+    <div class="form-actions">
+      <button onclick="closeForm()">Cancel</button>
+      <button onclick="saveDocument('${docId || ''}')">${docId ? 'Update' : 'Save'}</button>
+    </div>
+  `;
+  document.getElementById('formOverlay').style.display = 'flex';
+}
+
+function saveDocument(docId) {
+  const name = document.getElementById('docNameInput').value.trim();
+  const url  = document.getElementById('docUrlInput').value.trim();
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert('Please login again.');
+    return;
+  }
+  if (!name) {
+    alert('Please enter document name.');
+    return;
+  }
+
+  const data = {
+    name,
+    url,
+    userId: user.uid,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  if (docId) {
+    db.collection('documents').doc(docId).update(data)
+      .then(() => closeForm())
+      .catch(err => alert('Error updating document: ' + err.message));
+  } else {
+    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    db.collection('documents').add(data)
+      .then(() => closeForm())
+      .catch(err => alert('Error adding document: ' + err.message));
+  }
+}
+
+function deleteDocument(docId, ownerId) {
+  const user = auth.currentUser;
+  if (!user || user.uid !== ownerId) {
+    alert('You can only delete your own documents.');
+    return;
+  }
+  if (!confirm('Delete this document?')) return;
+
+  db.collection('documents').doc(docId).delete()
+    .catch(err => alert('Error deleting document: ' + err.message));
+}
+
+/* ========= VIDEOS CRUD ========= */
+
+function listenVideos(){
+    unsubscribeVideos = db.collection('videos')
+      .orderBy('createdAt', 'desc')
+      .onSnapshot(snapshot => {
+        const user = auth.currentUser;
+        const uid = user ? user.uid : null;
+        let html = '';
+
+        snapshot.forEach(doc => {
+          const v = doc.data();
+          const isOwner = uid && uid === v.userId;
+          const thumb = v.thumbnailUrl || '';
+          const title = v.title || 'Untitled video';
+          const safeTitle = title.replace(/'/g, "\\'");
+          const safeThumb = (thumb || '').replace(/'/g, "\\'");
+          const safeUrl   = (v.videoUrl || '').replace(/'/g, "\\'");
+
+          html += `
+            <div class="video-card">
+              <div class="card-main" style="display:flex; gap:10px;">
+                ${thumb ? `<img src="${thumb}" class="video-thumb">` : `<div class="video-thumb"></div>`}
+                <div>
+                  <div><strong>${title}</strong></div>
+                  <div style="font-size:12px; color:#6b7280;">${v.videoUrl || ''}</div>
+                </div>
+              </div>
+              <div class="card-actions">
+                ${v.videoUrl ? `<button class="btn-small" style="background:#10b981;" onclick="window.open('${v.videoUrl}','_blank')">Watch</button>` : ''}
+                ${isOwner ? `
+                  <button class="btn-small btn-edit" onclick="openVideoForm('${doc.id}', '${safeTitle}', '${safeThumb}', '${safeUrl}')">Update</button>
+                  <button class="btn-small btn-delete" onclick="deleteVideo('${doc.id}', '${v.userId}')">Delete</button>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        });
+
+        if (!html) {
+          html = `<p style="font-size:13px; color:#6b7280;">No videos yet. Click + to upload one.</p>`;
+        }
+
+        document.getElementById('videosList').innerHTML = html;
+      });
+}
+
+function openVideoForm(docId = null, title = '', thumb = '', url = '') {
+  const card = document.getElementById('formCard');
+  card.innerHTML = `
+    <h3>${docId ? 'Update Video' : 'Add Video'}</h3>
+    <label>Video Title</label>
+    <input type="text" id="videoTitleInput" value="${title}">
+    <label>Thumbnail URL (optional)</label>
+    <input type="text" id="videoThumbInput" value="${thumb}">
+    <label>Video URL (e.g. YouTube link)</label>
+    <input type="text" id="videoUrlInput" value="${url}">
+    <div class="form-actions">
+      <button onclick="closeForm()">Cancel</button>
+      <button onclick="saveVideo('${docId || ''}')">${docId ? 'Update' : 'Save'}</button>
+    </div>
+  `;
+  document.getElementById('formOverlay').style.display = 'flex';
+}
+
+function saveVideo(docId) {
+  const title = document.getElementById('videoTitleInput').value.trim();
+  const thumb = document.getElementById('videoThumbInput').value.trim();
+  const url   = document.getElementById('videoUrlInput').value.trim();
+  const user  = auth.currentUser;
+
+  if (!user) {
+    alert('Please login again.');
+    return;
+  }
+  if (!title) {
+    alert('Please enter video title.');
+    return;
+  }
+
+  const data = {
+    title,
+    thumbnailUrl: thumb,
+    videoUrl: url,
+    userId: user.uid,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  if (docId) {
+    db.collection('videos').doc(docId).update(data)
+      .then(() => closeForm())
+      .catch(err => alert('Error updating video: ' + err.message));
+  } else {
+    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    db.collection('videos').add(data)
+      .then(() => closeForm())
+      .catch(err => alert('Error adding video: ' + err.message));
+  }
+}
+
+function deleteVideo(docId, ownerId) {
+  const user = auth.currentUser;
+  if (!user || user.uid !== ownerId) {
+    alert('You can only delete your own videos.');
+    return;
+  }
+  if (!confirm('Delete this video?')) return;
+
+  db.collection('videos').doc(docId).delete()
+    .catch(err => alert('Error deleting video: ' + err.message));
+}
+
+/* ========= TUTORS CRUD (with WhatsApp) ========= */
+
+function listenTutors(){
+    unsubscribeTutors = db.collection('tutors')
+      .orderBy('createdAt', 'desc')
+      .onSnapshot(snapshot => {
+        const user = auth.currentUser;
+        const uid = user ? user.uid : null;
+        let html = '';
+
+        snapshot.forEach(doc => {
+          const t = doc.data();
+          const isOwner = uid && uid === t.userId;
+          const name = t.name || 'Unnamed tutor';
+          const spec = t.specialization || '';
+          const phone = t.phone || '';
+          const safeName = name.replace(/'/g, "\\'");
+          const safeSpec = spec.replace(/'/g, "\\'");
+
+          html += `
+            <div class="tutor-card">
+              <div class="card-main">
+                <div><strong>${name}</strong></div>
+                <div style="font-size:13px; color:#4b5563;">${spec}</div>
+                ${phone ? `<div style="font-size:12px; color:#6b7280;">WhatsApp: ${phone}</div>` : ''}
+              </div>
+              <div class="card-actions">
+                ${phone ? `
+                  <button class="btn-small" style="background:#10b981;"
+                          onclick="messageTutor('${phone}', '${safeName}')">
+                    Message
+                  </button>` : ''}
+                ${isOwner ? `
+                  <button class="btn-small btn-edit" onclick="openTutorForm('${doc.id}', '${safeName}', '${safeSpec}', '${phone}')">Update</button>
+                  <button class="btn-small btn-delete" onclick="deleteTutor('${doc.id}', '${t.userId}')">Delete</button>
+                ` : ''}
+              </div>
+            </div>
+          `;
+        });
+
+        if (!html) {
+          html = `<p style="font-size:13px; color:#6b7280;">No tutors yet. Click + to add yourself as a tutor.</p>`;
+        }
+
+        document.getElementById('tutorsList').innerHTML = html;
+      });
+}
+
+function openTutorForm(docId = null, name = '', specialization = '', phone = '') {
+  const card = document.getElementById('formCard');
+  card.innerHTML = `
+    <h3>${docId ? 'Update Tutor' : 'Add Tutor'}</h3>
+    <label>Your Name</label>
+    <input type="text" id="tutorNameInput" value="${name}">
+    <label>Specialized Course / Field</label>
+    <input type="text" id="tutorSpecInput" value="${specialization}">
+    <label>WhatsApp Number</label>
+    <input type="text" id="tutorPhoneInput" value="${phone}" placeholder="e.g. 9876543210">
+    <div class="form-actions">
+      <button onclick="closeForm()">Cancel</button>
+      <button onclick="saveTutor('${docId || ''}')">${docId ? 'Update' : 'Save'}</button>
+    </div>
+  `;
+  document.getElementById('formOverlay').style.display = 'flex';
+}
+
+function saveTutor(docId) {
+  const name = document.getElementById('tutorNameInput').value.trim();
+  const spec = document.getElementById('tutorSpecInput').value.trim();
+  const phone = document.getElementById('tutorPhoneInput').value.trim();
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert('Please login again.');
+    return;
+  }
+  if (!name || !spec || !phone) {
+    alert('Please fill all fields including WhatsApp number.');
+    return;
+  }
+
+  const data = {
+    name,
+    specialization: spec,
+    phone,
+    userId: user.uid,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  if (docId) {
+    db.collection('tutors').doc(docId).update(data)
+      .then(() => closeForm())
+      .catch(err => alert('Error updating tutor: ' + err.message));
+  } else {
+    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    db.collection('tutors').add(data)
+      .then(() => closeForm())
+      .catch(err => alert('Error adding tutor: ' + err.message));
+  }
+}
+
+function deleteTutor(docId, ownerId) {
+  const user = auth.currentUser;
+  if (!user || user.uid !== ownerId) {
+    alert('You can only delete your own tutor profile.');
+    return;
+  }
+  if (!confirm('Delete this tutor entry?')) return;
+
+  db.collection('tutors').doc(docId).delete()
+    .catch(err => alert('Error deleting tutor: ' + err.message));
+}
+</script>
+
+</body>
+</html>

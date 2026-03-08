@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Available Courses</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+    <!-- Firebase init -->
+    <script src="js/firebase.js"></script>
+</head>
+<body>
+
+<div class="container dashboard">
+    <h2>Available Courses</h2>
+    <p class="subtitle">Browse courses and start a WhatsApp discussion with the person offering the skill.</p>
+
+    <div id="skills"></div>
+
+    <a href="dashboard.html">⬅ Back to Dashboard</a>
+</div>
+
+<script>
+// Auth guard (optional: can allow anonymous read if you want)
+auth.onAuthStateChanged(user => {
+    if (!user) {
+        alert("Please login first.");
+        window.location.href = "index.html";
+    }
+});
+
+// Convert local phone to full WhatsApp number
+function formatPhoneForWhatsApp(localPhone) {
+    if (!localPhone) return "";
+    let cleaned = localPhone.replace(/\D/g, "");
+    if (cleaned.startsWith("0")) {
+        cleaned = cleaned.substring(1);
+    }
+    const countryCode = "91"; // India
+    return countryCode + cleaned;
+}
+
+function buildWhatsAppLink(localPhone, courseName, barterSkill) {
+    const fullPhone = formatPhoneForWhatsApp(localPhone);
+    if (!fullPhone) return "";
+    const msg = `Hi, I'm interested in your course: ${courseName}, and I am ready to teach you ${barterSkill}.`;
+    const encoded = encodeURIComponent(msg);
+    return `https://wa.me/${fullPhone}?text=${encoded}`;
+}
+
+function startDiscussion(localPhone, courseName, barterSkill) {
+    const url = buildWhatsAppLink(localPhone, courseName, barterSkill);
+    if (!url) {
+        alert("No valid WhatsApp number found for this course.");
+        return;
+    }
+    window.open(url, "_blank");
+}
+
+function deleteCourse(docId, ownerId) {
+    const user = auth.currentUser;
+    if (!user) {
+        alert("You must be logged in to delete a course.");
+        return;
+    }
+    if (user.uid !== ownerId) {
+        alert("You can only delete courses you published.");
+        return;
+    }
+
+    if (!confirm("Are you sure you want to delete this course?")) {
+        return;
+    }
+
+    db.collection("skills").doc(docId).delete()
+      .then(() => {
+          console.log("Course deleted:", docId);
+      })
+      .catch(err => {
+          alert("Error deleting course: " + err.message);
+          console.error(err);
+      });
+}
+
+db.collection("skills")
+  .orderBy("createdAt", "desc")
+  .onSnapshot(snapshot => {
+      const currentUser = auth.currentUser;
+      const currentUid = currentUser ? currentUser.uid : null;
+
+      let html = "";
+      snapshot.forEach(doc => {
+          const s = doc.data();
+          const courseName  = s.courseName  || "";
+          const barterSkill = s.barterSkill || "";
+          const personName  = s.personName  || "";
+          const phone       = s.phone       || "";
+          const ownerId     = s.userId      || "";
+          const docId       = doc.id;
+
+          const safeCourseName  = courseName.replace(/'/g, "\\'");
+          const safeBarterSkill = barterSkill.replace(/'/g, "\\'");
+
+          const isOwner = currentUid && currentUid === ownerId;
+          const deleteButtonHtml = isOwner
+            ? `<button class="delete-btn" onclick="deleteCourse('${docId}', '${ownerId}')">Delete</button>`
+            : "";
+
+          html += `
+            <div class="skill-card">
+              <div class="skill-card-details">
+                <div class="skill-card-title">${courseName}</div>
+                <div><strong>Barter With:</strong> ${barterSkill}</div>
+                <div><strong>Person:</strong> ${personName}</div>
+                <div><strong>WhatsApp:</strong> ${phone}</div>
+              </div>
+              <div>
+                <button onclick="startDiscussion('${phone}', '${safeCourseName}', '${safeBarterSkill}')">
+                  Start Discussion
+                </button>
+                ${deleteButtonHtml}
+              </div>
+            </div>
+          `;
+      });
+
+      if (!html) {
+          html = `<p style="font-size: 13px; color: #6b7280; margin-top: 8px;">
+                    No courses added yet. Go to “Add Course” to create one.
+                  </p>`;
+      }
+
+      document.getElementById("skills").innerHTML = html;
+  });
+</script>
+
+</body>
+</html>
